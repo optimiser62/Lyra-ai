@@ -25,9 +25,9 @@ if st.button("Ask", use_container_width=True):
     if user_input:
         try:
             completion = client.chat.completions.create(
-                model="llama-3.2-70b-versatile",  # ✅ Updated model
+                model="llama-3.1-8b-instant",  # ✅ Updated working model
                 messages=[
-                    {"role": "system", "content": "You are Lyra, a helpful and friendly AI assistant."},
+                    {"role": "system", "content": "You are Lyra, a friendly and smart AI assistant."},
                     {"role": "user", "content": user_input},
                 ]
             )
@@ -39,18 +39,15 @@ if st.button("Ask", use_container_width=True):
 
         except Exception as e:
             reply = f"Error: {str(e)}"
-
             st.session_state.history.append(("Error", reply))
 
 # Display chat history
 st.markdown("---")
 for sender, message in st.session_state.history:
-    if sender == "You":
-        st.markdown(f"<p style='color: cyan;'><b>{sender}:</b> {message}</p>", unsafe_allow_html=True)
-    elif sender == "Lyra":
-        st.markdown(f"<p style='color: white;'><b>{sender}:</b> {message}</p>", unsafe_allow_html=True)
-    else:
-        st.markdown(f"<p style='color: red;'><b>{sender}:</b> {message}</p>", unsafe_allow_html=True)
+    color = "cyan" if sender == "You" else "white"
+    if sender == "Error":
+        color = "red"
+    st.markdown(f"<p style='color: {color};'><b>{sender}:</b> {message}</p>", unsafe_allow_html=True)
 
 # Background styling
 st.markdown("""
