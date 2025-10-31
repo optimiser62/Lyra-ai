@@ -1,99 +1,80 @@
+ import streamlit as st
+from groq import Groq
 import os
-import streamlit as st
-import requests
 
-# --- Setup page ---
-st.set_page_config(page_title="Lyra AI", page_icon="🤖", layout="centered")
+# ----------------- SETUP -----------------
+groq_api_key = os.getenv("GROQ_API_KEY")
+client = Groq(api_key=groq_api_key)
 
-# --- Custom Styling ---
+st.set_page_config(page_title="Lyra AI", page_icon="✨", layout="centered")
+
+# ----------------- CUSTOM STYLING -----------------
 st.markdown("""
     <style>
         body {
             background-color: #0E1117;
-            color: white;
         }
-        .stTextInput>div>div>input {
-            border-radius: 10px;
-            padding: 10px;
-            font-size: 16px;
-            background-color: #1A1D24;
-            color: white;
+        .title {
+            text-align: center;
+            font-size: 48px;
+            font-weight: bold;
+            color: #ffffff;
+            text-shadow: 0 0 15px #00ffcc;
+        }
+        .subtitle {
+            text-align: center;
+            font-size: 18px;
+            color: #cfcfcf;
         }
         .stButton>button {
-            background-color: #4CAF50;
-            color: white;
+            background-color: #00ffcc;
+            color: black;
+            border: none;
             border-radius: 8px;
+            padding: 10px 25px;
             font-size: 16px;
-            padding: 8px 20px;
+            font-weight: bold;
+            transition: all 0.2s ease-in-out;
         }
         .stButton>button:hover {
-            background-color: #45a049;
+            background-color: #00e6b8;
+            transform: scale(1.05);
         }
-        .chat-bubble-user {
-            background-color: #2B313E;
-            border-radius: 15px;
-            padding: 10px;
-            margin-bottom: 10px;
-            color: white;
-        }
-        .chat-bubble-bot {
-            background-color: #1E90FF;
-            border-radius: 15px;
-            padding: 10px;
-            margin-bottom: 10px;
-            color: white;
+        .footer {
+            text-align: center;
+            font-size: 15px;
+            color: #00ffcc;
+            margin-top: 40px;
+            text-shadow: 0 0 8px #00ffcc;
         }
     </style>
 """, unsafe_allow_html=True)
 
-# --- App Title ---
-st.title("✨ Lyra AI")
-st.markdown("Your personal intelligent assistant powered by **Llama 3.1 via Groq** 🧠")
+# ----------------- APP HEADER -----------------
+st.markdown("<div class='title'>✨ Lyra AI</div>", unsafe_allow_html=True)
+st.markdown("<div class='subtitle'>Your personal AI assistant powered by Llama 3.1 via Groq 🧠</div>", unsafe_allow_html=True)
+st.write("")
 
-# --- API Key from environment ---
-groq_api_key = os.getenv("GROQ_API_KEY")
-
-# --- Chat History ---
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
-# --- User Input ---
-user_input = st.text_input("Ask Lyra anything:")
+# ----------------- USER INPUT -----------------
+prompt = st.text_input("Ask Lyra anything:")
 
 if st.button("Ask"):
-    if user_input:
-        st.session_state.messages.append({"role": "user", "content": user_input})
-
-        headers = {
-            "Authorization": f"Bearer {groq_api_key}",
-            "Content-Type": "application/json"
-        }
-
-        data = {
-            "model": "llama-3.1-8b-instant",
-            "messages": [{"role": "user", "content": user_input}]
-        }
-
-        with st.spinner("Lyra is thinking..."):
-            response = requests.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers=headers,
-                json=data
+    if prompt:
+        with st.spinner("Lyra is thinking... 🤔"):
+            chat_completion = client.chat.completions.create(
+                messages=[{"role": "user", "content": prompt}],
+                model="llama3-8b-8192"
             )
-
-        if response.status_code == 200:
-            answer = response.json()["choices"][0]["message"]["content"]
-            st.session_state.messages.append({"role": "assistant", "content": answer})
-        else:
-            st.error("Error: " + response.text)
-
-# --- Show Chat Messages ---
-for msg in st.session_state.messages:
-    if msg["role"] == "user":
-        st.markdown(f"<div class='chat-bubble-user'><b>You:</b> {msg['content']}</div>", unsafe_allow_html=True)
+            st.markdown(f"**Lyra:** {chat_completion.choices[0].message.content}")
     else:
-        st.markdown(f"<div class='chat-bubble-bot'><b>Lyra:</b> {msg['content']}</div>", unsafe_allow_html=True)
+        st.warning("Please type something to ask Lyra!")
 
-# --- Footer ---
-st.markdown("---")
-st.markdown("💡 Built by **Aditya Raj** using [Groq API](https://groq.com) and Streamlit")
+# ----------------- FOOTER -----------------
+st.markdown(
+    """
+    <div class='footer'>
+        🚀 Powered by <b>Lyra AI</b>
+    </div>
+    """,
+    unsafe_allow_html=True
+)   
