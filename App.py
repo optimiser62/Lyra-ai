@@ -26,10 +26,27 @@ if not api_key:
 else:
     client = Groq(api_key=api_key)
 
-    # --- Input box ---
-    user_input = st.text_input("💬 Ask Lyra anything:", placeholder="Type your question here...")
+    # --- Initialize chat history ---
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
 
-    # --- Button Glow Style ---
+    # --- Display chat history ---
+    for msg in st.session_state.messages:
+        role = msg["role"]
+        content = msg["content"]
+        color = "#00FFFF" if role == "assistant" else "#FFFFFF"
+        bg = "#0A0A0A" if role == "assistant" else "#1C1C1C"
+        st.markdown(
+            f"<div style='background-color:{bg}; padding:12px; border-radius:10px; "
+            f"margin-bottom:8px; box-shadow:0 0 12px {color}; color:white;'>"
+            f"<b>{'Lyra' if role=='assistant' else 'You'}:</b> {content}</div>",
+            unsafe_allow_html=True
+        )
+
+    # --- Input box ---
+    user_input = st.text_input("💬 Type your message:", placeholder="Ask something...")
+
+    # --- Button style ---
     st.markdown("""
         <style>
             div.stButton > button:first-child {
@@ -49,22 +66,26 @@ else:
         </style>
     """, unsafe_allow_html=True)
 
-    # --- Ask Button ---
-    if st.button("Ask"):
+    # --- Handle chat ---
+    if st.button("Send"):
         if not user_input.strip():
-            st.warning("Please enter a question before submitting.")
+            st.warning("Please enter a message.")
         else:
+            # Add user message
+            st.session_state.messages.append({"role": "user", "content": user_input})
+
             try:
                 with st.spinner("💭 Lyra is thinking..."):
                     response = client.chat.completions.create(
-                        model="llama-3.1-8b-instant",  # ✅ updated working model
-                        messages=[{"role": "user", "content": user_input}]
+                        model="llama-3.1-8b-instant",
+                        messages=st.session_state.messages
                     )
                     reply = response.choices[0].message.content
-                    st.markdown(
-                        f"<div style='background-color:#0A0A0A; padding:15px; border-radius:10px; "
-                        f"box-shadow:0 0 20px #00FFFF; color:white;'>{reply}</div>",
-                        unsafe_allow_html=True
-                    )
+
+                    # Add AI reply
+                    st.session_state.messages.append({"role": "assistant", "content": reply})
+
+                    # Force rerun to show updated chat
+                    st.rerun()
             except Exception as e:
                 st.error(f"⚠️ Error: {e}")
