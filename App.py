@@ -1,84 +1,75 @@
-import streamlit as st
-import requests
 import os
+import streamlit as st
+from groq import Groq
 
-# ✅ Page setup
+# Initialize Groq client
+api_key = os.getenv("GROQ_API_KEY")
+client = Groq(api_key=api_key)
+
+# Streamlit UI
 st.set_page_config(page_title="Lyra AI", page_icon="🚀", layout="centered")
 
-# ✅ Custom CSS for glowing theme
 st.markdown("""
-    <style>
-        body {
-            background-color: #0a0a0a;
-            color: white;
-            text-align: center;
-        }
-        .title {
-            font-size: 3em;
-            font-weight: bold;
-            color: #00eaff;
-            text-shadow: 0 0 20px #00eaff;
-        }
-        .subtitle {
-            color: #cccccc;
-            font-size: 1.2em;
-        }
-        .stButton>button {
-            background: linear-gradient(90deg, #00eaff, #0077ff);
-            color: white;
-            border: none;
-            border-radius: 10px;
-            padding: 0.6em 1.2em;
-            font-size: 1em;
-            box-shadow: 0 0 20px #00eaff;
-            transition: 0.3s;
-        }
-        .stButton>button:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 30px #00eaff;
-        }
-        .stTextInput>div>div>input {
-            background-color: #111111;
-            color: white;
-            border: 1px solid #00eaff;
-            border-radius: 10px;
-        }
-    </style>
+    <h1 style='text-align: center; color: white; font-size: 48px; text-shadow: 0 0 25px cyan;'>🚀 Lyra AI</h1>
+    <h3 style='text-align: center; color: gray;'>Your personal AI assistant powered by Groq</h3>
 """, unsafe_allow_html=True)
 
-# ✅ Title Section
-st.markdown("<h1 class='title'>🚀 Lyra AI</h1>", unsafe_allow_html=True)
-st.markdown("<p class='subtitle'>Your personal AI assistant powered by Groq</p>", unsafe_allow_html=True)
+# Chat history
+if "history" not in st.session_state:
+    st.session_state.history = []
 
-# ✅ User Input
-user_input = st.text_input("Ask Lyra anything:")
+# User input
+user_input = st.text_input("Ask Lyra anything:", placeholder="Type your question here...")
 
-# ✅ API Key (from environment variable)
-api_key = os.getenv("GROQ_API_KEY")
-
-# ✅ Button and API Call
-if st.button("Ask"):
+if st.button("Ask", use_container_width=True):
     if user_input:
-        with st.spinner("Lyra is thinking..."):
-            headers = {
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json"
-            }
-
-            # ✅ Updated Model (latest supported one)
-            data = {
-                "model": "llama-3.1-70b-versatile",
-                "messages": [{"role": "user", "content": user_input}]
-            }
-
-            response = requests.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers=headers,
-                json=data
+        try:
+            completion = client.chat.completions.create(
+                model="llama-3.2-70b-versatile",  # ✅ Updated model
+                messages=[
+                    {"role": "system", "content": "You are Lyra, a helpful and friendly AI assistant."},
+                    {"role": "user", "content": user_input},
+                ]
             )
+            reply = completion.choices[0].message.content
 
-            if response.status_code == 200:
-                answer = response.json()["choices"][0]["message"]["content"]
-                st.success(answer)
-            else:
-                st.error(f"Error: {response.text}")
+            # Store chat history
+            st.session_state.history.append(("You", user_input))
+            st.session_state.history.append(("Lyra", reply))
+
+        except Exception as e:
+            reply = f"Error: {str(e)}"
+
+            st.session_state.history.append(("Error", reply))
+
+# Display chat history
+st.markdown("---")
+for sender, message in st.session_state.history:
+    if sender == "You":
+        st.markdown(f"<p style='color: cyan;'><b>{sender}:</b> {message}</p>", unsafe_allow_html=True)
+    elif sender == "Lyra":
+        st.markdown(f"<p style='color: white;'><b>{sender}:</b> {message}</p>", unsafe_allow_html=True)
+    else:
+        st.markdown(f"<p style='color: red;'><b>{sender}:</b> {message}</p>", unsafe_allow_html=True)
+
+# Background styling
+st.markdown("""
+    <style>
+    body {
+        background-color: #0e1117;
+        color: white;
+    }
+    div.stButton > button {
+        background-color: #0078ff;
+        color: white;
+        font-size: 18px;
+        border-radius: 10px;
+        box-shadow: 0 0 20px cyan;
+        transition: 0.3s;
+    }
+    div.stButton > button:hover {
+        box-shadow: 0 0 30px cyan;
+        transform: scale(1.05);
+    }
+    </style>
+""", unsafe_allow_html=True)
