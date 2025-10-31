@@ -1,91 +1,52 @@
-import os
 import streamlit as st
-from groq import Groq
+import requests
+import os
 
-# --- Page setup ---
+# Page setup
 st.set_page_config(page_title="Lyra AI", page_icon="🚀", layout="centered")
 
-# --- Glowing Title ---
-st.markdown("""
-    <h1 style='text-align: center;
-               color: #00FFFF;
-               text-shadow: 0 0 25px #00FFFF;
-               font-family: "Poppins", sans-serif;'>
-        🚀 Lyra AI
-    </h1>
-    <p style='text-align: center; color: #CCCCCC;'>
-        Your personal AI assistant powered by Groq
-    </p>
-""", unsafe_allow_html=True)
+# Sidebar navigation
+with st.sidebar:
+    st.title("🚀 Lyra AI")
+    st.markdown("### Menu")
+    option = st.radio("Select Option", ["Chat", "About", "Help", "Settings"])
+    st.markdown("---")
+    st.caption("Developed by Lyra Labs ⚡")
 
-# --- API Setup ---
-api_key = os.getenv("GROQ_API_KEY")
+# Main content changes based on sidebar selection
+if option == "Chat":
+    st.markdown("<h1 style='text-align:center; color:#00FFFF;'>🚀 Lyra AI</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align:center;'>Your personal AI assistant powered by Groq</p>", unsafe_allow_html=True)
 
-if not api_key:
-    st.error("🚨 API key not found! Please set your GROQ_API_KEY in environment variables.")
-else:
-    client = Groq(api_key=api_key)
+    user_input = st.text_input("Ask Lyra anything:")
 
-    # --- Initialize chat history ---
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
+    if st.button("Ask"):
+        if user_input:
+            with st.spinner("Lyra is thinking..."):
+                headers = {
+                    "Authorization": f"Bearer {os.getenv('GROQ_API_KEY')}",
+                    "Content-Type": "application/json"
+                }
+                data = {
+                    "model": "llama3-70b-8192",
+                    "messages": [{"role": "user", "content": user_input}]
+                }
 
-    # --- Display chat history ---
-    for msg in st.session_state.messages:
-        role = msg["role"]
-        content = msg["content"]
-        color = "#00FFFF" if role == "assistant" else "#FFFFFF"
-        bg = "#0A0A0A" if role == "assistant" else "#1C1C1C"
-        st.markdown(
-            f"<div style='background-color:{bg}; padding:12px; border-radius:10px; "
-            f"margin-bottom:8px; box-shadow:0 0 12px {color}; color:white;'>"
-            f"<b>{'Lyra' if role=='assistant' else 'You'}:</b> {content}</div>",
-            unsafe_allow_html=True
-        )
+                response = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=data)
+                if response.status_code == 200:
+                    answer = response.json()["choices"][0]["message"]["content"]
+                    st.success(answer)
+                else:
+                    st.error("Error: " + response.text)
 
-    # --- Input box ---
-    user_input = st.text_input("💬 Type your message:", placeholder="Ask something...")
+elif option == "About":
+    st.header("About Lyra AI")
+    st.write("Lyra AI is a next-gen intelligent assistant powered by Groq models. It helps you learn, create, and explore through natural conversation.")
 
-    # --- Button style ---
-    st.markdown("""
-        <style>
-            div.stButton > button:first-child {
-                background-color: #00FFFF;
-                color: black;
-                border-radius: 12px;
-                font-weight: bold;
-                font-size: 16px;
-                box-shadow: 0px 0px 15px #00FFFF;
-                transition: 0.3s;
-            }
-            div.stButton > button:first-child:hover {
-                background-color: #00CCCC;
-                box-shadow: 0px 0px 25px #00FFFF;
-                transform: scale(1.05);
-            }
-        </style>
-    """, unsafe_allow_html=True)
+elif option == "Help":
+    st.header("Help")
+    st.write("If Lyra isn’t responding, please check your internet or API key. For feedback, contact: support@lyra.ai")
 
-    # --- Handle chat ---
-    if st.button("Send"):
-        if not user_input.strip():
-            st.warning("Please enter a message.")
-        else:
-            # Add user message
-            st.session_state.messages.append({"role": "user", "content": user_input})
-
-            try:
-                with st.spinner("💭 Lyra is thinking..."):
-                    response = client.chat.completions.create(
-                        model="llama-3.1-8b-instant",
-                        messages=st.session_state.messages
-                    )
-                    reply = response.choices[0].message.content
-
-                    # Add AI reply
-                    st.session_state.messages.append({"role": "assistant", "content": reply})
-
-                    # Force rerun to show updated chat
-                    st.rerun()
-            except Exception as e:
-                st.error(f"⚠️ Error: {e}")
+elif option == "Settings":
+    st.header("Settings")
+    st.write("More customization features coming soon!")
