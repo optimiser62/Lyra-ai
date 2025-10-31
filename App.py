@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 import requests
 
@@ -6,14 +7,15 @@ st.set_page_config(page_title="Lyra AI", page_icon="🤖", layout="centered")
 st.title("✨ Lyra AI")
 st.markdown("Your personal intelligent assistant, powered by **Llama 3 via Groq** 🧠")
 
-# User input
+groq_api_key = st.text_input("Enter your Groq API key:", type="password")
+
 user_input = st.text_input("Ask Lyra anything:")
 
 if st.button("Ask"):
-    if user_input:
+    if user_input and groq_api_key:
         with st.spinner("Lyra is thinking..."):
             headers = {
-                "Authorization": "Bearer YOUR_GROQ_API_KEY",
+                "Authorization": f"Bearer {groq_api_key}",
                 "Content-Type": "application/json"
             }
             data = {
