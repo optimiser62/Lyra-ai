@@ -3,15 +3,15 @@ import streamlit as st
 from groq import Groq
 
 # --- Page setup ---
-st.set_page_config(page_title="Lyra AI", page_icon="✨", layout="centered")
+st.set_page_config(page_title="Lyra AI", page_icon="🚀", layout="centered")
 
-# --- Glowing title ---
+# --- Glowing Title ---
 st.markdown("""
     <h1 style='text-align: center;
                color: #00FFFF;
-               text-shadow: 0 0 20px #00FFFF;
+               text-shadow: 0 0 25px #00FFFF;
                font-family: "Poppins", sans-serif;'>
-        ✨ Lyra AI
+        🚀 Lyra AI
     </h1>
     <p style='text-align: center; color: #CCCCCC;'>
         Your personal AI assistant powered by Groq
@@ -29,27 +29,27 @@ else:
     # --- Input box ---
     user_input = st.text_input("💬 Ask Lyra anything:", placeholder="Type your question here...")
 
-    # --- Button with glowing style ---
-    button_style = """
+    # --- Button Glow Style ---
+    st.markdown("""
         <style>
             div.stButton > button:first-child {
                 background-color: #00FFFF;
                 color: black;
-                border-radius: 10px;
+                border-radius: 12px;
                 font-weight: bold;
+                font-size: 16px;
                 box-shadow: 0px 0px 15px #00FFFF;
                 transition: 0.3s;
             }
             div.stButton > button:first-child:hover {
-                background-color: #00cccc;
+                background-color: #00CCCC;
                 box-shadow: 0px 0px 25px #00FFFF;
                 transform: scale(1.05);
             }
         </style>
-    """
-    st.markdown(button_style, unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
-    # --- Ask button ---
+    # --- Ask Button ---
     if st.button("Ask"):
         if not user_input.strip():
             st.warning("Please enter a question before submitting.")
@@ -57,7 +57,7 @@ else:
             try:
                 with st.spinner("💭 Lyra is thinking..."):
                     response = client.chat.completions.create(
-                        model="llama3-8b-8192",  # ✅ Correct model name
+                        model="llama-3.1-8b-instant",  # ✅ updated working model
                         messages=[{"role": "user", "content": user_input}]
                     )
                     reply = response.choices[0].message.content
