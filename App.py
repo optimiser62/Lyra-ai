@@ -1,75 +1,72 @@
 import streamlit as st
-import requests
-import sounddevice as sd
-import wavio
-import tempfile
-import os
 from groq import Groq
+from st_audiorec import st_audiorec
+import tempfile
+import base64
 
-# ---- SETUP ----
-groq_api_key = os.getenv("GROQ_API_KEY")
-client = Groq(api_key=groq_api_key)
+# Initialize Groq client
+client = Groq(api_key=st.secrets.get("GROQ_API_KEY", None))
 
-# ---- RECORD AUDIO FUNCTION ----
-def record_audio(duration=5, samplerate=44100):
-    st.info("🎤 Recording... Speak now!")
-    audio = sd.rec(int(duration * samplerate), samplerate=samplerate, channels=1)
-    sd.wait()
-    st.success("✅ Recording complete!")
-    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
-    wavio.write(temp_file.name, audio, samplerate, sampwidth=2)
-    return temp_file.name
+# --- App UI ---
+st.set_page_config(page_title="Lyra AI 🚀", page_icon="🚀", layout="centered")
 
-# ---- STREAMLIT UI ----
-st.set_page_config(page_title="Lyra AI", page_icon="🤖", layout="wide")
+st.markdown("""
+    <h1 style='text-align: center; color: #00FFFF; text-shadow: 0 0 15px #00FFFF;'>🚀 Lyra AI</h1>
+    <p style='text-align: center; color: #AAA;'>Your personal AI assistant powered by <b>Llama 3.2 (Groq)</b></p>
+""", unsafe_allow_html=True)
 
-st.markdown(
-    """
-    <h1 style='text-align:center; color:#00FFFF; text-shadow:0 0 20px #00FFFF;'>💠 Lyra AI</h1>
-    <p style='text-align:center;'>Ask anything, speak your question, or upload a photo!</p>
-    """,
-    unsafe_allow_html=True
-)
+st.divider()
 
-# ---- SIDEBAR ----
-st.sidebar.title("⚙️ Options")
-mode = st.sidebar.radio("Choose Input Type:", ["💬 Text", "🎙️ Voice", "🖼️ Photo"])
+# --- Image Upload Section ---
+st.subheader("🖼️ Upload an Image")
+uploaded_file = st.file_uploader("Drag and drop a file (JPG, JPEG, PNG)", type=["jpg", "jpeg", "png"])
 
-# ---- TEXT INPUT ----
-if mode == "💬 Text":
-    user_input = st.text_input("Type your question:")
-    if st.button("Ask"):
-        if user_input.strip():
-            with st.spinner("Thinking..."):
+if uploaded_file:
+    st.image(uploaded_file, caption="Uploaded Image", use_column_width=True)
+    st.success("✅ Image uploaded successfully!")
+
+st.divider()
+
+# --- Voice Input Section ---
+st.subheader("🎙️ Voice Input")
+audio_bytes = st_audiorec()
+
+user_input = ""
+
+if audio_bytes:
+    st.success("🎧 Voice recorded successfully!")
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_audio:
+        temp_audio.write(audio_bytes)
+        audio_base64 = base64.b64encode(audio_bytes).decode("utf-8")
+        st.audio(temp_audio.name)
+        user_input = "Voice input received (text transcription not yet implemented)."
+
+st.divider()
+
+# --- Text Input Section ---
+st.subheader("💬 Ask Lyra Anything")
+user_question = st.text_area("Type your question here:", placeholder="Ask me anything...")
+
+# --- Combine Inputs ---
+final_input = user_question or user_input
+
+if st.button("🚀 Ask Lyra"):
+    if not final_input:
+        st.warning("Please enter a question or use voice input.")
+    else:
+        with st.spinner("Lyra is thinking... 🤔"):
+            try:
                 response = client.chat.completions.create(
                     model="llama-3.2-90b-text-preview",
-                    messages=[{"role": "user", "content": user_input}]
+                    messages=[{"role": "user", "content": final_input}],
                 )
-            st.markdown("### 💡 Lyra says:")
-            st.write(response.choices[0].message.content)
-        else:
-            st.warning("Please enter a question.")
+                answer = response.choices[0].message.content
+                st.markdown(f"### 💡 Lyra Says:\n\n{answer}")
+            except Exception as e:
+                st.error(f"❌ Error: {e}")
 
-# ---- VOICE INPUT ----
-elif mode == "🎙️ Voice":
-    if st.button("🎧 Record Voice"):
-        audio_file = record_audio()
-        st.audio(audio_file)
-
-        # You could add transcription using Whisper API here later
-
-# ---- PHOTO UPLOAD ----
-elif mode == "🖼️ Photo":
-    uploaded_file = st.file_uploader("Upload an image:", type=["jpg", "jpeg", "png"])
-    if uploaded_file is not None:
-        st.image(uploaded_file, caption="Uploaded Photo", use_container_width=True)
-        st.success("✅ Image uploaded successfully!")
-        # Later, you can connect this to AI vision analysis using Groq or Gemini
-
-st.markdown(
-    """
+# --- Footer ---
+st.markdown("""
     <hr>
-    <p style='text-align:center; color:gray;'>✨ Lyra AI — Intelligent. Simple. Fast.</p>
-    """,
-    unsafe_allow_html=True
-)
+    <p style='text-align:center; color:#888;'>✨ Lyra AI — powered by Groq Llama 3.2 ✨</p>
+""", unsafe_allow_html=True)
