@@ -1,5 +1,7 @@
 streamlit
 groq
-SpeechRecognition 
 requests
+sounddevice
+wavio
+
 
