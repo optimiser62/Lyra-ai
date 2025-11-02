@@ -1,72 +1,77 @@
-import os
 import streamlit as st
-from groq import Groq
+import requests
+import os
 
-# Initialize Groq client
-api_key = os.getenv("GROQ_API_KEY")
-client = Groq(api_key=api_key)
+# --- Page setup ---
+st.set_page_config(page_title="Lyra AI 🚀", page_icon="🚀", layout="centered")
 
-# Streamlit UI
-st.set_page_config(page_title="Lyra AI", page_icon="🚀", layout="centered")
-
-st.markdown("""
-    <h1 style='text-align: center; color: white; font-size: 48px; text-shadow: 0 0 25px cyan;'>🚀 Lyra AI</h1>
-    <h3 style='text-align: center; color: gray;'>Your personal AI assistant powered by Groq</h3>
-""", unsafe_allow_html=True)
-
-# Chat history
-if "history" not in st.session_state:
-    st.session_state.history = []
-
-# User input
-user_input = st.text_input("Ask Lyra anything:", placeholder="Type your question here...")
-
-if st.button("Ask", use_container_width=True):
-    if user_input:
-        try:
-            completion = client.chat.completions.create(
-                model="llama-3.1-8b-instant",  # ✅ Updated working model
-                messages=[
-                    {"role": "system", "content": "You are Lyra, a friendly and smart AI assistant."},
-                    {"role": "user", "content": user_input},
-                ]
-            )
-            reply = completion.choices[0].message.content
-
-            # Store chat history
-            st.session_state.history.append(("You", user_input))
-            st.session_state.history.append(("Lyra", reply))
-
-        except Exception as e:
-            reply = f"Error: {str(e)}"
-            st.session_state.history.append(("Error", reply))
-
-# Display chat history
-st.markdown("---")
-for sender, message in st.session_state.history:
-    color = "cyan" if sender == "You" else "white"
-    if sender == "Error":
-        color = "red"
-    st.markdown(f"<p style='color: {color};'><b>{sender}:</b> {message}</p>", unsafe_allow_html=True)
-
-# Background styling
+# --- Custom CSS for glow + buttons ---
 st.markdown("""
     <style>
-    body {
-        background-color: #0e1117;
-        color: white;
-    }
-    div.stButton > button {
-        background-color: #0078ff;
-        color: white;
-        font-size: 18px;
-        border-radius: 10px;
-        box-shadow: 0 0 20px cyan;
-        transition: 0.3s;
-    }
-    div.stButton > button:hover {
-        box-shadow: 0 0 30px cyan;
-        transform: scale(1.05);
-    }
+        .glow {
+            font-size: 38px;
+            text-align: center;
+            color: #00FFFF;
+            text-shadow: 0 0 10px #00FFFF, 0 0 20px #00FFFF, 0 0 30px #00FFFF;
+        }
+        .subtitle {
+            text-align: center;
+            color: #B0B0B0;
+            font-size: 18px;
+        }
+        .stButton>button {
+            background-color: #00BFFF;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: 0.3s;
+        }
+        .stButton>button:hover {
+            background-color: #1E90FF;
+            transform: scale(1.05);
+        }
     </style>
 """, unsafe_allow_html=True)
+
+# --- Header ---
+st.markdown('<p class="glow">🚀 Lyra AI</p>', unsafe_allow_html=True)
+st.markdown('<p class="subtitle">Your personal AI assistant powered by Llama 3.1 (Groq)</p>', unsafe_allow_html=True)
+
+# --- Image Upload Section ---
+st.markdown("### 📸 Upload an Image")
+uploaded_file = st.file_uploader("Upload your image here", type=["jpg", "jpeg", "png"])
+if uploaded_file is not None:
+    st.image(uploaded_file, caption="Uploaded Image", use_column_width=True)
+
+# --- Chat Section ---
+st.markdown("### 💬 Ask Lyra Anything")
+user_input = st.text_input("Type your question:")
+
+if st.button("Ask 🚀"):
+    if user_input:
+        with st.spinner("Lyra is thinking..."):
+            api_key = os.getenv("GROQ_API_KEY")  # Set this in Streamlit Secrets
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            }
+            data = {
+                "model": "llama-3.1-70b-versatile",  # ✅ Latest and best model
+                "messages": [{"role": "user", "content": user_input}]
+            }
+
+            response = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers=headers,
+                json=data
+            )
+
+            if response.status_code == 200:
+                answer = response.json()["choices"][0]["message"]["content"]
+                st.success(answer)
+            else:
+                st.error("Error: " + response.text)
+    else:
+        st.warning("Please type something to ask Lyra!")
