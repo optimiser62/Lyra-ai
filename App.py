@@ -1,65 +1,74 @@
-import streamlit as st
-import base64
-import requests
-import speech_recognition as sr
-import os
-
 # ------------------------------------------
-# ✅ PAGE CONFIG
+# ✅ FIXED CHATGPT-STYLE INPUT BAR (Bottom)
 # ------------------------------------------
-st.set_page_config(page_title="Lyra AI", page_icon="🚀", layout="wide")
 
-# Hide Streamlit menu + sidebar
-hide_st = """
+st.markdown("""
 <style>
-#MainMenu {visibility: hidden;}
-footer {visibility: hidden;}
-header {visibility: hidden;}
+.input-container {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 15px;
+    background-color: #0d0d0d;
+    border-top: 1px solid #333;
+}
+input[type="text"] {
+    border-radius: 10px;
+    padding: 12px;
+}
 </style>
-"""
-st.markdown(hide_st, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
+
+with st.container():
+    st.markdown('<div class="input-container">', unsafe_allow_html=True)
+
+    col1, col2 = st.columns([5, 1])
+
+    with col1:
+        user_input = st.text_input(
+            "Type your message...",
+            value=voice_text if voice_text else "",
+            label_visibility="collapsed",
+            key="user_msg"
+        )
+
+    with col2:
+        send = st.button("🚀", key="send_btn")
+
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # ------------------------------------------
-# ✅ WELCOME HEADER (ChatGPT Style)
+# ✅ SEND MESSAGE TO GROQ
 # ------------------------------------------
-if "messages" not in st.session_state or len(st.session_state["messages"]) == 0:
-    st.markdown("""
-    <div style="text-align:center; margin-top: 40px; margin-bottom: 20px;">
-        <h1 style="
-            font-size: 45px;
-            font-weight: 800;
-            background: linear-gradient(90deg, #00eaff, #00ffa2);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        ">
-            🚀 Lyra AI
-        </h1>
-        <p style="color:#e0e0e0; font-size: 22px;">
-            Hi, I'm Lyra! How can I help you today?
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-else:
-    st.markdown("""
-    <h1 style="text-align:center; color:white; margin-top:20px;">🚀 Lyra AI</h1>
-    """, unsafe_allow_html=True)
+if send and user_input.strip() != "":
+    st.session_state["messages"].append({"role": "user", "content": user_input})
 
-# ------------------------------------------
-# ✅ SESSION STATE FOR CHAT
-# ------------------------------------------
-if "messages" not in st.session_state:
-    st.session_state["messages"] = []
+    payload = {
+        "model": "llama-3.2-11b-text",
+        "messages": [{"role": m["role"], "content": m["content"]} for m in st.session_state["messages"]]
+    }
 
-# ------------------------------------------
-# ✅ IMAGE UPLOAD
-# ------------------------------------------
-uploaded_image = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png"])
+    if encoded_image:
+        payload["messages"].append({
+            "role": "user",
+            "content": "Here is an image.",
+            "image": encoded_image
+        })
 
-encoded_image = None
-if uploaded_image:
-    img_bytes = uploaded_image.read()
-    encoded_image = base64.b64encode(img_bytes).decode("utf-8")
-    st.image(img_bytes, caption="Uploaded Image", width=250)
+    headers = {
+        "Authorization": f"Bearer {os.getenv('GROQ_API_KEY')}",
+        "Content-Type": "application/json"
+    }
 
-# ------------------------------------------
-# ✅ VOICE INPUT SECTION
+    response = requests.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        json=payload,
+        headers=headers
+    )
+
+    reply = response.json()["choices"][0]["message"]["content"]
+
+    st.session_state["messages"].append({"role": "assistant", "content": reply})
+
+    st.rerun()
