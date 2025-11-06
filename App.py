@@ -1,72 +1,79 @@
 import streamlit as st
-from groq import Groq
-from st_audiorec import st_audiorec
-import tempfile
-import base64
+import requests
+import os
 
-# Initialize Groq client
-client = Groq(api_key=st.secrets.get("GROQ_API_KEY", None))
+# ✅ Page settings
+st.set_page_config(page_title="Lyra AI", layout="wide")
 
-# --- App UI ---
-st.set_page_config(page_title="Lyra AI 🚀", page_icon="🚀", layout="centered")
-
+# ✅ ChatGPT-style centered layout
 st.markdown("""
-    <h1 style='text-align: center; color: #00FFFF; text-shadow: 0 0 15px #00FFFF;'>🚀 Lyra AI</h1>
-    <p style='text-align: center; color: #AAA;'>Your personal AI assistant powered by <b>Llama 3.2 (Groq)</b></p>
+<style>
+.chat-container {
+    max-width: 700px;
+    margin: auto;
+    padding: 20px;
+}
+.message-user {
+    background-color: #1f2937;
+    padding: 12px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    color: white;
+}
+.message-ai {
+    background-color: #0ea5e9;
+    padding: 12px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    color: black;
+}
+</style>
 """, unsafe_allow_html=True)
 
-st.divider()
+st.markdown("<h1 style='text-align:center;'>🚀 Lyra AI</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center;'>Your personal AI assistant powered by Groq</p>", unsafe_allow_html=True)
 
-# --- Image Upload Section ---
-st.subheader("🖼️ Upload an Image")
-uploaded_file = st.file_uploader("Drag and drop a file (JPG, JPEG, PNG)", type=["jpg", "jpeg", "png"])
+# ✅ Session state for chat history
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-if uploaded_file:
-    st.image(uploaded_file, caption="Uploaded Image", use_column_width=True)
-    st.success("✅ Image uploaded successfully!")
+# ✅ Show chat history
+st.markdown("<div class='chat-container'>", unsafe_allow_html=True)
+for msg in st.session_state.messages:
+    role_class = "message-user" if msg["role"] == "user" else "message-ai"
+    st.markdown(f"<div class='{role_class}'>{msg['content']}</div>", unsafe_allow_html=True)
+st.markdown("</div>", unsafe_allow_html=True)
 
-st.divider()
+# ✅ User input
+user_input = st.text_input("Ask Lyra anything:")
 
-# --- Voice Input Section ---
-st.subheader("🎙️ Voice Input")
-audio_bytes = st_audiorec()
+# ✅ API Key
+groq_key = os.getenv("GROQ_API_KEY")
 
-user_input = ""
+if st.button("Send 🚀"):
+    if user_input:
+        # Add user message to chat history
+        st.session_state.messages.append({"role": "user", "content": user_input})
 
-if audio_bytes:
-    st.success("🎧 Voice recorded successfully!")
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_audio:
-        temp_audio.write(audio_bytes)
-        audio_base64 = base64.b64encode(audio_bytes).decode("utf-8")
-        st.audio(temp_audio.name)
-        user_input = "Voice input received (text transcription not yet implemented)."
+        headers = {
+            "Authorization": f"Bearer {groq_key}",
+            "Content-Type": "application/json"
+        }
 
-st.divider()
+        data = {
+            "model": "llama-3.2-11b-text",   # ✅ Latest working model
+            "messages": st.session_state.messages
+        }
 
-# --- Text Input Section ---
-st.subheader("💬 Ask Lyra Anything")
-user_question = st.text_area("Type your question here:", placeholder="Ask me anything...")
+        response = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers=headers,
+            json=data
+        )
 
-# --- Combine Inputs ---
-final_input = user_question or user_input
-
-if st.button("🚀 Ask Lyra"):
-    if not final_input:
-        st.warning("Please enter a question or use voice input.")
-    else:
-        with st.spinner("Lyra is thinking... 🤔"):
-            try:
-                response = client.chat.completions.create(
-                    model="llama-3.2-90b-text-preview",
-                    messages=[{"role": "user", "content": final_input}],
-                )
-                answer = response.choices[0].message.content
-                st.markdown(f"### 💡 Lyra Says:\n\n{answer}")
-            except Exception as e:
-                st.error(f"❌ Error: {e}")
-
-# --- Footer ---
-st.markdown("""
-    <hr>
-    <p style='text-align:center; color:#888;'>✨ Lyra AI — powered by Groq Llama 3.2 ✨</p>
-""", unsafe_allow_html=True)
+        if response.status_code == 200:
+            answer = response.json()["choices"][0]["message"]["content"]
+            st.session_state.messages.append({"role": "assistant", "content": answer})
+            st.experimental_rerun()
+        else:
+            st.error("Error: " + response.text)
