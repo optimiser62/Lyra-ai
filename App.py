@@ -21,26 +21,33 @@ Hi, I'm Lyra! How can I help you today?
 """, unsafe_allow_html=True)
 
 # ==============================
-# ✅ SESSION STATE (chat history)
+# ✅ SESSION STATE
 # ==============================
 if "messages" not in st.session_state:
     st.session_state["messages"] = []
-if "voice_text" not in st.session_state:
-    st.session_state.voice_text = ""
 
 # ==============================
 # ✅ IMAGE UPLOAD
 # ==============================
 st.subheader("Upload an image")
-uploaded = st.file_uploader("Upload JPG/PNG", type=["jpg", "jpeg", "png"])
+uploaded = st.file_uploader("Upload JPG/PNG", type=["jpg","jpeg","png"])
 
-encoded_image = None
+image_message = None
+
 if uploaded:
     img_bytes = uploaded.read()
     encoded_image = base64.b64encode(img_bytes).decode()
 
+    image_message = {
+        "role": "user",
+        "content": [
+            {"type":"text", "text":"Here is the image"},
+            {"type":"input_image", "image": encoded_image}
+        ]
+    }
+
 # ==============================
-# ✅ SHOW CHAT HISTORY (CHATGPT STYLE)
+# ✅ Chat history display
 # ==============================
 st.markdown("<hr>", unsafe_allow_html=True)
 
@@ -57,7 +64,7 @@ for msg in st.session_state["messages"]:
         )
 
 # ==============================
-# ✅ BOTTOM INPUT BAR (CHATGPT STYLE)
+# ✅ BOTTOM BAR
 # ==============================
 st.markdown("""
 <style>
@@ -75,7 +82,7 @@ st.markdown("""
 
 st.markdown("<div class='bottom-bar'>", unsafe_allow_html=True)
 
-col1, col2 = st.columns([6, 1])
+col1, col2 = st.columns([6,1])
 
 with col1:
     user_input = st.text_input("Type here...", key="input", label_visibility="collapsed")
@@ -86,25 +93,24 @@ with col2:
 st.markdown("</div>", unsafe_allow_html=True)
 
 # ==============================
-# ✅ HANDLE SEND
+# ✅ SEND HANDLER
 # ==============================
 if send and user_input.strip():
 
-    # Add user message
-    st.session_state["messages"].append({"role": "user", "content": user_input})
+    # Add user text to history
+    st.session_state["messages"].append({"role":"user","content":user_input})
+
+    # BUILD API PAYLOAD
+    payload_messages = st.session_state["messages"].copy()
+
+    # Add image if uploaded
+    if image_message:
+        payload_messages.append(image_message)
 
     payload = {
         "model": "llama-3.2-11b-text",
-        "messages": st.session_state["messages"]
+        "messages": payload_messages
     }
-
-    # Add image if uploaded
-    if encoded_image:
-        payload["messages"].append({
-            "role": "user",
-            "content": "Here is the image.",
-            "image": encoded_image
-        })
 
     headers = {
         "Authorization": f"Bearer {os.getenv('GROQ_API_KEY')}",
@@ -116,13 +122,13 @@ if send and user_input.strip():
             "https://api.groq.com/openai/v1/chat/completions",
             json=payload,
             headers=headers
-        )
+        ).json()
 
-        reply = response.json()["choices"][0]["message"]["content"]
-
-        st.session_state["messages"].append({"role": "assistant", "content": reply})
-
-    except Exception as e:
-        st.session_state["messages"].append({"role": "assistant", "content": "Error: " + str(e)})
-
-    st.rerun()
+        # ✅ FIX: safe check for choices
+        if "choices" not in response:
+            st.session_state["messages"].append({
+                "role": "assistant",
+                "content": "Groq error: " + str(response)
+            })
+        else:
+            reply =
