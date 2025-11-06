@@ -1,4 +1,5 @@
 streamlit
 groq
-streamlit-audiorec
 requests
+SpeechRecognition
+pydub
